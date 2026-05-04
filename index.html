@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erix - Rogue (Inquisitive)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --parchment: #f4ece1;
+            --parchment-dark: #e8dcc8;
+            --ink: #2a1f1a;
+            --ink-light: #4a3f3a;
+            --gold: #c9a227;
+            --gold-dark: #8b6914;
+            --steel: #2c3e50;
+            --steel-light: #4a5f7a;
+            --brass: #b87333;
+            --brass-dark: #8a5522;
+            --ruby: #8b2942;
+            --ruby-light: #ab4962;
+            --shadow: #1a1f2a;
+            --border-ornate: #6b5344;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Crimson Text', Georgia, serif;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(44, 62, 80, 0.10) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(184, 115, 51, 0.10) 0%, transparent 50%),
+                linear-gradient(180deg, #e8dcc8 0%, #f4ece1 50%, #e8dcc8 100%);
+            min-height: 100vh; color: var(--ink); padding: 20px;
+        }
+        .spell-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(26,31,42,0.8); z-index:1000; justify-content:center; align-items:center; padding:20px; backdrop-filter:blur(3px); }
+        .spell-overlay.active { display:flex; }
+        .spell-popup { background: var(--parchment); border:3px solid var(--brass); border-radius:8px; max-width:520px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 0 0 1px var(--steel),0 10px 40px rgba(0,0,0,0.5); animation:popupIn 0.2s ease-out; }
+        @keyframes popupIn { from{opacity:0;transform:scale(0.95) translateY(-10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        .spell-popup-header { background:linear-gradient(135deg,var(--steel) 0%,var(--steel-light) 100%); padding:15px 20px; border-bottom:2px solid var(--brass); position:relative; }
+        .spell-popup-header.cantrip { background:linear-gradient(135deg,var(--ink-light) 0%,#5a4f4a 100%); }
+        .spell-popup-header.visor { background:linear-gradient(135deg,var(--brass-dark) 0%,var(--brass) 100%); }
+        .spell-popup-title { font-family:'Cinzel',serif; font-size:1.4rem; font-weight:700; color:#fff; margin-bottom:4px; }
+        .spell-popup-subtitle { font-size:0.85rem; color:rgba(255,255,255,0.85); font-style:italic; }
+        .spell-popup-close { position:absolute; top:10px; right:15px; background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer; opacity:0.8; }
+        .spell-popup-close:hover { opacity:1; }
+        .spell-popup-body { padding:20px; }
+        .spell-meta { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed var(--brass); }
+        .spell-meta-item { font-size:0.9rem; }
+        .spell-meta-label { font-weight:600; color:var(--ink-light); }
+        .spell-description { font-size:0.95rem; line-height:1.6; }
+        .spell-description p { margin-bottom:10px; }
+        .spell-description p:last-child { margin-bottom:0; }
+        .spell-upcast { margin-top:15px; padding-top:15px; border-top:1px dashed var(--brass); font-size:0.9rem; color:var(--ink-light); }
+        .spell-upcast strong { color:var(--steel); }
+        .spell-link { cursor:pointer; border-bottom:1px dotted var(--ink-light); transition:all 0.2s; }
+        .spell-link:hover { color:var(--steel); border-bottom-color:var(--steel); }
+
+        .dice-toast { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.8); background:var(--parchment); border:3px solid var(--brass); border-radius:12px; padding:25px 35px; box-shadow:0 10px 40px rgba(0,0,0,0.4); z-index:2000; text-align:center; opacity:0; transition:all 0.3s ease; pointer-events:none; }
+        .dice-toast.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+        .dice-toast.crit { border-color:var(--gold); background:linear-gradient(135deg,rgba(201,162,39,0.15) 0%,var(--parchment) 100%); }
+        .dice-toast.fail { border-color:var(--ruby); background:linear-gradient(135deg,rgba(139,41,66,0.15) 0%,var(--parchment) 100%); }
+        .dice-toast-skill { font-family:'Cinzel',serif; font-size:0.9rem; color:var(--ink-light); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; }
+        .dice-toast-result { font-family:'Cinzel',serif; font-size:3rem; font-weight:700; color:var(--ink); line-height:1; }
+        .dice-toast.crit .dice-toast-result { color:var(--gold-dark); }
+        .dice-toast.fail .dice-toast-result { color:var(--ruby); }
+        .dice-toast-breakdown { font-size:0.9rem; color:var(--ink-light); margin-top:8px; }
+        .dice-toast-label { font-family:'Cinzel',serif; font-size:0.8rem; color:var(--brass-dark); margin-top:5px; text-transform:uppercase; letter-spacing:0.05em; }
+
+        .sheet { max-width:900px; margin:0 auto; background:var(--parchment); border:3px solid var(--border-ornate); border-radius:4px; box-shadow:0 0 0 1px var(--steel),0 4px 20px rgba(44,62,80,0.3),inset 0 0 60px rgba(26,31,42,0.05); padding:30px; position:relative; }
+        .sheet::before { content:''; position:absolute; top:8px; left:8px; right:8px; bottom:8px; border:1px solid var(--brass); border-radius:2px; pointer-events:none; opacity:0.5; }
+        .header { text-align:center; margin-bottom:25px; padding-bottom:20px; border-bottom:2px solid var(--brass); position:relative; }
+        .header::after { content:'⌖'; position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); background:var(--parchment); padding:0 15px; color:var(--steel); font-size:20px; }
+        .character-name { font-family:'Cinzel',serif; font-size:3rem; font-weight:700; color:var(--ink); text-shadow:2px 2px 0 var(--parchment-dark); letter-spacing:0.15em; margin-bottom:5px; }
+        .character-subtitle { font-size:1.2rem; font-style:italic; color:var(--ink-light); letter-spacing:0.05em; }
+
+        .combat-row { display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:25px; }
+        .combat-stat { background:linear-gradient(135deg,var(--steel) 0%,var(--steel-light) 100%); border:2px solid var(--brass); border-radius:8px; padding:12px 8px; text-align:center; box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 3px 8px rgba(0,0,0,0.2); }
+        .combat-stat-label { font-family:'Cinzel',serif; font-size:0.75rem; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
+        .combat-stat-value { font-family:'Cinzel',serif; font-size:1.8rem; font-weight:700; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.3); }
+        .combat-stat-note { font-size:0.7rem; color:rgba(255,255,255,0.75); font-style:italic; }
+        .combat-stat.initiative-roll { cursor:pointer; transition:all 0.15s ease; }
+        .combat-stat.initiative-roll:hover { transform:translateY(-2px); box-shadow:inset 0 1px 0 rgba(255,255,255,0.2),0 5px 12px rgba(0,0,0,0.3); }
+
+        .abilities-section { margin-bottom:25px; }
+        .section-title { font-family:'Cinzel',serif; font-size:1.1rem; font-weight:600; color:var(--steel); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:12px; padding-bottom:5px; border-bottom:1px solid var(--brass); display:flex; align-items:center; gap:10px; }
+        .section-title::before,.section-title::after { content:'◆'; font-size:0.6rem; color:var(--brass); }
+        .abilities-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; }
+        .ability-box { background:var(--parchment-dark); border:2px solid var(--border-ornate); border-radius:8px; padding:10px 5px; text-align:center; }
+        .ability-box.prof { border-color:var(--steel); background:linear-gradient(135deg,rgba(44,62,80,0.1) 0%,var(--parchment-dark) 100%); }
+        .ability-name { font-family:'Cinzel',serif; font-size:0.7rem; font-weight:600; color:var(--ink-light); text-transform:uppercase; letter-spacing:0.1em; }
+        .ability-score { font-family:'Cinzel',serif; font-size:1.6rem; font-weight:700; color:var(--ink); }
+        .ability-mod { font-size:1rem; font-weight:600; color:var(--steel); }
+        .ability-separator { height:1px; background:linear-gradient(90deg,transparent,var(--border-ornate),transparent); margin:8px 5px; }
+        .ability-save { font-family:'Cinzel',serif; font-size:1rem; font-weight:700; color:var(--ink); cursor:pointer; padding:4px 8px; border-radius:4px; transition:all 0.15s ease; display:inline-block; }
+        .ability-save:hover { background:var(--parchment); color:var(--ruby); transform:scale(1.1); }
+        .ability-box.prof .ability-save { color:var(--steel); }
+        .ability-box.prof .ability-save:hover { color:var(--ruby); }
+
+        .skills-section { margin-bottom:25px; }
+        .skills-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+        .skill-item { display:flex; align-items:center; background:var(--parchment-dark); border:1px solid var(--border-ornate); border-radius:4px; padding:6px 8px; font-size:0.85rem; cursor:pointer; transition:all 0.15s ease; min-width:0; }
+        .skill-item:hover { background:var(--parchment); transform:translateY(-1px); box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+        .skill-item.prof { background:linear-gradient(135deg,rgba(44,62,80,0.15) 0%,rgba(44,62,80,0.05) 100%); border-color:var(--steel); }
+        .skill-ability { font-family:'Cinzel',serif; font-size:0.6rem; font-weight:600; color:var(--ink-light); text-transform:uppercase; width:28px; flex-shrink:0; }
+        .skill-name { flex:1; color:var(--ink); }
+        .skill-item.prof .skill-name { font-weight:600; color:var(--steel); }
+        .skill-bonus { font-family:'Cinzel',serif; font-weight:600; color:var(--ink); min-width:40px; text-align:right; }
+        .skill-item.prof .skill-bonus { color:var(--steel); }
+        .skill-item.expert { background:linear-gradient(135deg,rgba(184,115,51,0.22) 0%,rgba(184,115,51,0.08) 100%); border-color:var(--brass); border-width:2px; }
+        .skill-item.expert .skill-name { color:var(--brass-dark); }
+        .skill-item.expert .skill-bonus { color:var(--brass-dark); }
+
+        .two-columns { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:25px; }
+        .info-box { background:var(--parchment-dark); border:1px solid var(--border-ornate); border-radius:6px; padding:15px; }
+        .info-box h3 { font-family:'Cinzel',serif; font-size:0.9rem; font-weight:600; color:var(--steel); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px; padding-bottom:5px; border-bottom:1px dashed var(--brass); }
+        .info-box ul { list-style:none; }
+        .info-box li { padding:4px 0; padding-left:18px; position:relative; font-size:0.93rem; line-height:1.4; }
+        .info-box li::before { content:'❖'; position:absolute; left:0; color:var(--brass-dark); font-size:0.8rem; }
+
+        .rest-box { padding-bottom:15px; }
+        .rest-buttons { display:flex; flex-direction:column; gap:10px; }
+        .rest-btn { display:flex; align-items:center; gap:12px; padding:12px 15px; border:2px solid var(--border-ornate); border-radius:8px; background:var(--parchment); cursor:pointer; transition:all 0.2s ease; text-align:left; }
+        .rest-btn:hover { transform:translateY(-2px); box-shadow:0 4px 8px rgba(0,0,0,0.15); }
+        .rest-btn.short-rest { border-color:var(--gold); background:linear-gradient(135deg,rgba(201,162,39,0.1) 0%,var(--parchment) 100%); }
+        .rest-btn.long-rest { border-color:var(--steel); background:linear-gradient(135deg,rgba(44,62,80,0.1) 0%,var(--parchment) 100%); }
+        .rest-icon { font-size:1.5rem; }
+        .rest-label { font-family:'Cinzel',serif; font-size:1rem; font-weight:600; color:var(--ink); }
+        .rest-desc { font-size:0.75rem; color:var(--ink-light); margin-left:auto; }
+
+        .attacks-section { margin-bottom:25px; }
+        .attack-item { background:var(--parchment-dark); border:1px solid var(--border-ornate); border-radius:6px; padding:12px 15px; display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer; transition:all 0.15s ease; flex-wrap:wrap; }
+        .attack-item:hover { transform:translateY(-1px); box-shadow:0 2px 4px rgba(0,0,0,0.1); background:var(--parchment); }
+        .attack-name { font-family:'Cinzel',serif; font-weight:600; color:var(--ink); min-width:140px; flex-shrink:0; }
+        .attack-hit { font-family:'Cinzel',serif; font-weight:700; color:var(--steel); flex-shrink:0; min-width:40px; }
+        .attack-damage { font-family:'Cinzel',serif; font-weight:600; color:var(--brass-dark); }
+        .attack-notes { font-size:0.78rem; color:var(--ink-light); font-style:italic; margin-left:auto; flex-shrink:0; }
+
+        .features-section { margin-bottom:25px; }
+        .feature-category { background:var(--parchment-dark); border:1px solid var(--border-ornate); border-radius:6px; margin-bottom:15px; overflow:hidden; }
+        .feature-category-header { background:linear-gradient(135deg,var(--steel) 0%,var(--steel-light) 100%); padding:10px 15px; font-family:'Cinzel',serif; font-size:0.9rem; font-weight:600; color:#fff; text-transform:uppercase; letter-spacing:0.1em; }
+        .feature-category-header.brass { background:linear-gradient(135deg,var(--brass-dark) 0%,var(--brass) 100%); }
+        .feature-category-header.ruby { background:linear-gradient(135deg,var(--ruby) 0%,var(--ruby-light) 100%); }
+        .feature-category-header.gold { background:linear-gradient(135deg,var(--gold-dark) 0%,var(--gold) 100%); }
+        .feature-category-content { padding:12px 15px; }
+        .feature-item { margin-bottom:8px; font-size:0.9rem; line-height:1.5; }
+        .feature-item:last-child { margin-bottom:0; }
+        .feature-name { font-weight:600; color:var(--ink); }
+        .feature-sub { margin-left:20px; color:var(--ink-light); font-size:0.85rem; }
+
+        .spellcasting-header { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:15px; }
+        .spell-stat { background:linear-gradient(135deg,var(--steel) 0%,var(--steel-light) 100%); border:2px solid var(--brass); border-radius:6px; padding:10px; text-align:center; cursor:pointer; transition:all 0.15s ease; }
+        .spell-stat:hover { transform:translateY(-2px); box-shadow:0 4px 8px rgba(0,0,0,0.2); }
+        .spell-stat-label { font-family:'Cinzel',serif; font-size:0.65rem; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:0.05em; }
+        .spell-stat-value { font-family:'Cinzel',serif; font-size:1.4rem; font-weight:700; color:#fff; }
+
+        .slots-section { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+        .slot-box { background:var(--parchment-dark); border:1px solid var(--border-ornate); border-radius:6px; padding:10px; text-align:center; }
+        .slot-label { font-family:'Cinzel',serif; font-size:0.75rem; font-weight:600; color:var(--ink-light); text-transform:uppercase; margin-bottom:8px; }
+        .slot-checkboxes { display:flex; justify-content:center; gap:6px; flex-wrap:wrap; }
+        .slot-checkbox { width:22px; height:22px; appearance:none; border:2px solid var(--border-ornate); border-radius:50%; background:var(--parchment); cursor:pointer; transition:all 0.2s ease; }
+        .slot-checkbox:checked { background:var(--steel); border-color:var(--brass); box-shadow:inset 0 0 4px rgba(0,0,0,0.3); }
+
+        .spell-level { background:var(--parchment-dark); border:1px solid var(--border-ornate); border-radius:6px; margin-bottom:10px; overflow:hidden; }
+        .spell-level-header { background:var(--steel); padding:8px 12px; font-family:'Cinzel',serif; font-size:0.8rem; font-weight:600; color:#fff; text-transform:uppercase; letter-spacing:0.1em; }
+        .spell-level-content { padding:10px 12px; font-size:0.9rem; line-height:1.6; }
+        .spell-tag { font-size:0.7rem; padding:1px 6px; border-radius:3px; margin-left:2px; font-weight:600; }
+        .spell-tag.visor { background:var(--brass); color:#fff; }
+        .spell-c { font-family:'Cinzel',serif; font-size:0.65rem; font-weight:700; color:var(--gold-dark); vertical-align:super; margin-left:1px; }
+
+        /* Tracker boxes */
+        .tracker-section { margin-bottom:25px; }
+        .tracker-box { background:linear-gradient(135deg,rgba(184,115,51,0.10) 0%,var(--parchment-dark) 100%); border:2px solid var(--brass); border-radius:8px; padding:15px; margin-bottom:12px; }
+        .tracker-box.ruby { background:linear-gradient(135deg,rgba(139,41,66,0.10) 0%,var(--parchment-dark) 100%); border-color:var(--ruby); }
+        .tracker-box.gold { background:linear-gradient(135deg,rgba(201,162,39,0.12) 0%,var(--parchment-dark) 100%); border-color:var(--gold); }
+        .tracker-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+        .tracker-title { font-family:'Cinzel',serif; font-weight:600; font-size:1rem; color:var(--brass-dark); }
+        .tracker-box.ruby .tracker-title { color:var(--ruby); }
+        .tracker-box.gold .tracker-title { color:var(--gold-dark); }
+        .tracker-charges { display:flex; gap:6px; }
+        .tracker-charge { width:22px; height:22px; border:2px solid var(--brass); border-radius:50%; background:var(--parchment); cursor:pointer; transition:all 0.2s; }
+        .tracker-charge.used { background:var(--brass); }
+        .tracker-box.ruby .tracker-charge { border-color:var(--ruby); }
+        .tracker-box.ruby .tracker-charge.used { background:var(--ruby); }
+        .tracker-box.gold .tracker-charge { border-color:var(--gold); }
+        .tracker-box.gold .tracker-charge.used { background:var(--gold); }
+        .tracker-desc { font-size:0.85rem; color:var(--ink-light); line-height:1.5; }
+
+        /* Quick reference */
+        .quick-ref { background:linear-gradient(135deg,rgba(44,62,80,0.10) 0%,rgba(44,62,80,0.04) 100%); border:2px solid var(--steel); border-radius:8px; padding:15px; margin-bottom:25px; }
+        .quick-ref h3 { font-family:'Cinzel',serif; font-size:1rem; font-weight:600; color:var(--steel); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px; text-align:center; }
+        .quick-ref-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+        .quick-ref-item { background:var(--parchment); border:1px solid var(--steel); border-radius:6px; padding:10px; text-align:center; font-size:0.85rem; }
+        .quick-ref-item .qr-name { font-family:'Cinzel',serif; font-size:0.8rem; font-weight:600; color:var(--brass-dark); margin-bottom:5px; }
+
+        .sheet-footer { margin-top:25px; padding-top:15px; border-top:1px solid var(--brass); text-align:center; font-size:0.8rem; color:var(--ink-light); font-style:italic; }
+
+        @media (max-width:768px) {
+            .combat-row { grid-template-columns:repeat(2,1fr); }
+            .abilities-grid { grid-template-columns:repeat(3,1fr); }
+            .skills-grid { grid-template-columns:1fr 1fr; gap:4px; }
+            .skill-item { padding:5px 6px; font-size:0.8rem; }
+            .skill-name { font-size:0.75rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+            .two-columns { grid-template-columns:1fr; }
+            .spellcasting-header { grid-template-columns:repeat(2,1fr); }
+            .slots-section { grid-template-columns:1fr; }
+            .quick-ref-grid { grid-template-columns:1fr; }
+            .attack-name { min-width:auto; width:100%; } .attack-notes { margin-left:0; }
+        }
+        @media (max-width:400px) {
+            .skills-grid { grid-template-columns:1fr; }
+            .abilities-grid { grid-template-columns:repeat(2,1fr); }
+        }
+        @media print { body { background:white; padding:0; } .sheet { box-shadow:none; border:1px solid #ccc; } }
+    </style>
+</head>
+<body>
+    <div class="sheet">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="character-name">Erix</h1>
+            <p class="character-subtitle">Rogue (Inquisitive) 9</p>
+        </div>
+
+        <!-- Combat Stats -->
+        <div class="combat-row">
+            <div class="combat-stat">
+                <div class="combat-stat-label">Armor Class</div>
+                <div class="combat-stat-value">16</div>
+                <div class="combat-stat-note">Studded + DEX</div>
+            </div>
+            <div class="combat-stat">
+                <div class="combat-stat-label">Hit Points</div>
+                <div class="combat-stat-value">66</div>
+                <div class="combat-stat-note">d8 Hit Die</div>
+            </div>
+            <div class="combat-stat">
+                <div class="combat-stat-label">Speed</div>
+                <div class="combat-stat-value">30 ft</div>
+                <div class="combat-stat-note">Walking</div>
+            </div>
+            <div class="combat-stat initiative-roll" data-bonus="4">
+                <div class="combat-stat-label">Initiative</div>
+                <div class="combat-stat-value">+4</div>
+                <div class="combat-stat-note">DEX (click to roll)</div>
+            </div>
+        </div>
+
+        <!-- Ability Scores -->
+        <div class="abilities-section">
+            <h2 class="section-title">Ability Scores</h2>
+            <div class="abilities-grid">
+                <div class="ability-box">
+                    <div class="ability-name">STR</div>
+                    <div class="ability-score">10</div>
+                    <div class="ability-mod">+0</div>
+                    <div class="ability-separator"></div>
+                    <div class="ability-save" data-save="Strength" data-bonus="0">+0</div>
+                </div>
+                <div class="ability-box prof">
+                    <div class="ability-name">DEX</div>
+                    <div class="ability-score">19</div>
+                    <div class="ability-mod">+4</div>
+                    <div class="ability-separator"></div>
+                    <div class="ability-save" data-save="Dexterity" data-bonus="8">+8</div>
+                </div>
+                <div class="ability-box">
+                    <div class="ability-name">CON</div>
+                    <div class="ability-score">14</div>
+                    <div class="ability-mod">+2</div>
+                    <div class="ability-separator"></div>
+                    <div class="ability-save" data-save="Constitution" data-bonus="2">+2</div>
+                </div>
+                <div class="ability-box prof">
+                    <div class="ability-name">INT</div>
+                    <div class="ability-score">16</div>
+                    <div class="ability-mod">+3</div>
+                    <div class="ability-separator"></div>
+                    <div class="ability-save" data-save="Intelligence" data-bonus="7">+7</div>
+                </div>
+                <div class="ability-box">
+                    <div class="ability-name">WIS</div>
+                    <div class="ability-score">12</div>
+                    <div class="ability-mod">+1</div>
+                    <div class="ability-separator"></div>
+                    <div class="ability-save" data-save="Wisdom" data-bonus="1">+1</div>
+                </div>
+                <div class="ability-box">
+                    <div class="ability-name">CHA</div>
+                    <div class="ability-score">12</div>
+                    <div class="ability-mod">+1</div>
+                    <div class="ability-separator"></div>
+                    <div class="ability-save" data-save="Charisma" data-bonus="1">+1</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proficiencies & Rest -->
+        <div class="two-columns">
+            <div class="info-box">
+                <h3>Proficiencies &amp; Gear</h3>
+                <ul>
+                    <li><strong>Armor:</strong> Light armor</li>
+                    <li><strong>Weapons:</strong> Simple, Martial (Finesse/Light)</li>
+                    <li><strong>Tools:</strong> Thieves' Tools, Poisoner's Kit</li>
+                    <li><strong>Saves:</strong> DEX, INT</li>
+                    <li><strong>Languages:</strong> Common, Thieves' Cant + 1</li>
+                    <li><strong>PB:</strong> +4 &nbsp;•&nbsp; <strong>Sneak Attack:</strong> 5d6</li>
+                    <li><strong>Weapon Mastery:</strong> 2 weapon types (changeable on Long Rest)</li>
+                    <li><strong>Precision Visor (Legendary, Dormant):</strong> +1 atk/dmg, Darkvision 60 ft, ignores ½/¾ cover at range, no Disadv at long range or vs Prone, crit 19-20</li>
+                </ul>
+            </div>
+            <div class="info-box rest-box">
+                <h3>Rest</h3>
+                <div class="rest-buttons">
+                    <button class="rest-btn short-rest" onclick="shortRest()">
+                        <span class="rest-icon">☀</span>
+                        <span class="rest-label">Short Rest</span>
+                        <span class="rest-desc">Guarded Mind recovers</span>
+                    </button>
+                    <button class="rest-btn long-rest" onclick="longRest()">
+                        <span class="rest-icon">☽</span>
+                        <span class="rest-label">Long Rest</span>
+                        <span class="rest-desc">All resources restored</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills -->
+        <div class="skills-section">
+            <h2 class="section-title">Skills</h2>
+            <div class="skills-grid">
+                <div class="skill-item" data-skill="Athletics" data-bonus="0"><span class="skill-ability">STR</span> <span class="skill-name">Athletics</span> <span class="skill-bonus">+0</span></div>
+                <div class="skill-item prof" data-skill="Acrobatics" data-bonus="8"><span class="skill-ability">DEX</span> <span class="skill-name">Acrobatics</span> <span class="skill-bonus">+8 ✦</span></div>
+                <div class="skill-item prof" data-skill="Sleight of Hand" data-bonus="8"><span class="skill-ability">DEX</span> <span class="skill-name">Sleight of Hand</span> <span class="skill-bonus">+8 ✦</span></div>
+                <div class="skill-item prof expert" data-skill="Stealth" data-bonus="12"><span class="skill-ability">DEX</span> <span class="skill-name">Stealth ★</span> <span class="skill-bonus">+12</span></div>
+                <div class="skill-item prof" data-skill="Arcana" data-bonus="7"><span class="skill-ability">INT</span> <span class="skill-name">Arcana</span> <span class="skill-bonus">+7 ✦</span></div>
+                <div class="skill-item prof" data-skill="History" data-bonus="7"><span class="skill-ability">INT</span> <span class="skill-name">History</span> <span class="skill-bonus">+7 ✦</span></div>
+                <div class="skill-item prof expert" data-skill="Investigation" data-bonus="11"><span class="skill-ability">INT</span> <span class="skill-name">Investigation ★</span> <span class="skill-bonus">+11</span></div>
+                <div class="skill-item" data-skill="Nature" data-bonus="3"><span class="skill-ability">INT</span> <span class="skill-name">Nature</span> <span class="skill-bonus">+3</span></div>
+                <div class="skill-item prof" data-skill="Religion" data-bonus="7"><span class="skill-ability">INT</span> <span class="skill-name">Religion</span> <span class="skill-bonus">+7 ✦</span></div>
+                <div class="skill-item" data-skill="Animal Handling" data-bonus="1"><span class="skill-ability">WIS</span> <span class="skill-name">Animal Handling</span> <span class="skill-bonus">+1</span></div>
+                <div class="skill-item prof expert" data-skill="Insight" data-bonus="9"><span class="skill-ability">WIS</span> <span class="skill-name">Insight ★</span> <span class="skill-bonus">+9</span></div>
+                <div class="skill-item" data-skill="Medicine" data-bonus="1"><span class="skill-ability">WIS</span> <span class="skill-name">Medicine</span> <span class="skill-bonus">+1</span></div>
+                <div class="skill-item prof expert" data-skill="Perception" data-bonus="9"><span class="skill-ability">WIS</span> <span class="skill-name">Perception ★</span> <span class="skill-bonus">+9</span></div>
+                <div class="skill-item" data-skill="Survival" data-bonus="1"><span class="skill-ability">WIS</span> <span class="skill-name">Survival</span> <span class="skill-bonus">+1</span></div>
+                <div class="skill-item prof expert" data-skill="Deception" data-bonus="9"><span class="skill-ability">CHA</span> <span class="skill-name">Deception ★</span> <span class="skill-bonus">+9</span></div>
+                <div class="skill-item prof" data-skill="Intimidation" data-bonus="5"><span class="skill-ability">CHA</span> <span class="skill-name">Intimidation</span> <span class="skill-bonus">+5 ✦</span></div>
+                <div class="skill-item prof expert" data-skill="Performance" data-bonus="9"><span class="skill-ability">CHA</span> <span class="skill-name">Performance ★</span> <span class="skill-bonus">+9</span></div>
+                <div class="skill-item prof" data-skill="Persuasion" data-bonus="5"><span class="skill-ability">CHA</span> <span class="skill-name">Persuasion</span> <span class="skill-bonus">+5 ✦</span></div>
+            </div>
+        </div>
+
+        <!-- Attacks -->
+        <div class="attacks-section">
+            <h2 class="section-title">Attacks</h2>
+            <div class="attack-item" onclick="rollAttack('Rapier', 9, '1d8', 5, 'Piercing')">
+                <span class="attack-name">⚔ Rapier</span>
+                <span class="attack-hit">+9</span>
+                <span class="attack-damage">1d8 + 5 piercing</span>
+                <span class="attack-notes">Finesse • +Visor • Crit 19-20</span>
+            </div>
+            <div class="attack-item" onclick="rollAttack('Shortbow', 9, '1d6', 5, 'Piercing')">
+                <span class="attack-name">🏹 Shortbow</span>
+                <span class="attack-hit">+9</span>
+                <span class="attack-damage">1d6 + 5 piercing</span>
+                <span class="attack-notes">80/320 • Ignores ½/¾ cover</span>
+            </div>
+            <div class="attack-item" onclick="rollAttack('Dagger (thrown)', 9, '1d4', 5, 'Piercing')">
+                <span class="attack-name">🗡 Dagger</span>
+                <span class="attack-hit">+9</span>
+                <span class="attack-damage">1d4 + 5 piercing</span>
+                <span class="attack-notes">Finesse • Thrown 20/60 • Light</span>
+            </div>
+            <div style="font-size:0.82rem;color:var(--ink-light);margin-top:8px;font-style:italic;">
+                <strong>Sneak Attack (1/turn):</strong> +5d6 if Advantage OR ally adjacent (no Disadv). Finesse / Ranged only.<br>
+                <strong>Cunning Strike DC 16</strong> — Spend Sneak Attack dice for: <strong>Poison</strong> (1d6, CON save → Poisoned 1m), <strong>Trip</strong> (1d6, DEX save → Prone), <strong>Withdraw</strong> (1d6, move ½ Speed no OAs).
+            </div>
+        </div>
+
+        <!-- Resource Trackers -->
+        <div class="tracker-section">
+            <h2 class="section-title">Resource Trackers</h2>
+            <div class="tracker-box ruby">
+                <div class="tracker-header">
+                    <span class="tracker-title">⚡ Flustering Strike (4/Long Rest)</span>
+                    <div class="tracker-charges">
+                        <div class="tracker-charge" id="flusterCharge1" onclick="toggleCharge('flusterCharge', 1)"></div>
+                        <div class="tracker-charge" id="flusterCharge2" onclick="toggleCharge('flusterCharge', 2)"></div>
+                        <div class="tracker-charge" id="flusterCharge3" onclick="toggleCharge('flusterCharge', 3)"></div>
+                        <div class="tracker-charge" id="flusterCharge4" onclick="toggleCharge('flusterCharge', 4)"></div>
+                    </div>
+                </div>
+                <div class="tracker-desc">After hitting with an attack, target makes a <strong>WIS save DC 16</strong> or has <strong>Disadvantage on saving throws</strong> until the end of your next turn. <em>(Fairy Trickster)</em></div>
+            </div>
+            <div class="tracker-box gold">
+                <div class="tracker-header">
+                    <span class="tracker-title">🛡 Guarded Mind (1/Short Rest)</span>
+                    <div class="tracker-charges">
+                        <div class="tracker-charge" id="guardedCharge1" onclick="toggleCharge('guardedCharge', 1)"></div>
+                    </div>
+                </div>
+                <div class="tracker-desc">When you fail an <strong>INT, WIS or CHA save</strong>, you can cause yourself to succeed instead. <em>(Mage Slayer)</em></div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="features-section">
+            <h2 class="section-title">Features &amp; Traits</h2>
+
+            <div class="feature-category">
+                <div class="feature-category-header gold">Origin &amp; General Feats</div>
+                <div class="feature-category-content">
+                    <div class="feature-item"><span class="feature-name">Fairy Trickster:</span>
+                        <div class="feature-sub">• <strong>Faerie Trod Trotter:</strong> When you take the Disengage action, Difficult Terrain doesn't cost extra movement for the rest of that turn.</div>
+                        <div class="feature-sub">• <strong>Flustering Strike</strong> (PB/LR): On a hit, target makes a WIS save (DC 16) or has Disadvantage on saves until end of your next turn.</div>
+                    </div>
+                    <div class="feature-item"><span class="feature-name">Mage Slayer:</span>
+                        <div class="feature-sub">• <strong>Concentration Breaker:</strong> When you damage a creature concentrating, it has Disadvantage on the Concentration save.</div>
+                        <div class="feature-sub">• <strong>Guarded Mind</strong> (1/Short Rest): If you fail an INT/WIS/CHA save, you can succeed instead.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-category">
+                <div class="feature-category-header">Rogue Class Features</div>
+                <div class="feature-category-content">
+                    <div class="feature-item"><span class="feature-name">Sneak Attack (5d6):</span> 1/turn, on hit with Finesse or Ranged weapon. Need Advantage OR ally adjacent (no Disadv).</div>
+                    <div class="feature-item"><span class="feature-name">Thieves' Cant:</span> Secret rogue language.</div>
+                    <div class="feature-item"><span class="feature-name">Weapon Mastery:</span> Use mastery properties of 2 weapon types (changeable on Long Rest).</div>
+                    <div class="feature-item"><span class="feature-name">Cunning Action</span> (Bonus Action): Dash, Disengage, or Hide.</div>
+                    <div class="feature-item"><span class="feature-name">Steady Aim</span> (Bonus Action): Advantage on next attack this turn. Requires no movement; Speed becomes 0 until end of turn.</div>
+                    <div class="feature-item"><span class="feature-name">Cunning Strike (DC 16):</span> Spend Sneak Attack dice for effects:
+                        <div class="feature-sub">• <strong>Poison</strong> (1d6, requires Poisoner's Kit): CON save → Poisoned 1 min, save at end of each turn.</div>
+                        <div class="feature-sub">• <strong>Trip</strong> (1d6): DEX save → Prone (Large or smaller).</div>
+                        <div class="feature-sub">• <strong>Withdraw</strong> (1d6): Move up to ½ Speed without provoking OAs.</div>
+                    </div>
+                    <div class="feature-item"><span class="feature-name">Uncanny Dodge</span> (Reaction): Halve damage from one attack you can see (round down).</div>
+                    <div class="feature-item"><span class="feature-name">Evasion:</span> On DEX save vs ½-damage effects: success = 0 dmg, failure = ½ dmg.</div>
+                    <div class="feature-item"><span class="feature-name">Reliable Talent:</span> On any check using a skill or tool proficiency, treat d20 ≤ 9 as a 10.</div>
+                </div>
+            </div>
+
+            <div class="feature-category">
+                <div class="feature-category-header brass">Inquisitive</div>
+                <div class="feature-category-content">
+                    <div class="feature-item"><span class="feature-name">Heightened Senses (Lvl 3):</span> Proficiency in Insight &amp; Perception; PB doubled on those checks (effective Expertise — already shown).</div>
+                    <div class="feature-item"><span class="feature-name">Deductive Fighting Apprentice (Lvl 3):</span> Bonus Action — Investigation check vs target's Deception. On success, mark target for 1 minute (or until you mark another):
+                        <div class="feature-sub">• <strong>Deductive Offense:</strong> Use Sneak Attack vs that target without Advantage (still no Disadv).</div>
+                        <div class="feature-sub">• <strong>Deductive Defense:</strong> +INT (+3) to AC vs that target's attacks.</div>
+                    </div>
+                    <div class="feature-item"><span class="feature-name">Steady Eye (Lvl 9):</span> Advantage on Perception/Investigation if you moved ≤ ½ Speed this turn. Use the Search and Study actions as a Bonus Action.</div>
+                    <div class="feature-item"><span class="feature-name">Deductive Fighting Expert (Lvl 9):</span>
+                        <div class="feature-sub">• <strong>Deductive Offense:</strong> If you can already Sneak Attack target, gain Advantage on attack rolls vs it instead.</div>
+                        <div class="feature-sub">• <strong>Deductive Defense:</strong> When you take damage from target and use Uncanny Dodge, you can also make an Opportunity Attack against it as part of the same Reaction.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-category">
+                <div class="feature-category-header brass">Precision Visor — Legendary (Dormant)</div>
+                <div class="feature-category-content">
+                    <div class="feature-item"><span class="feature-name">Darkvision 60 ft</span> (magical and non-magical Dim Light/Darkness).</div>
+                    <div class="feature-item"><span class="feature-name">+1 to attack and damage rolls.</span></div>
+                    <div class="feature-item"><span class="feature-name">Ranged precision:</span> Ranged weapon attacks ignore Half/Three-Quarters Cover. No Disadvantage at long range or vs creatures with Prone condition.</div>
+                    <div class="feature-item"><span class="feature-name">Crit 19-20</span> on weapon attacks.</div>
+                    <div class="feature-item"><span class="feature-name">Always-Prepared Spells:</span> See spell list (tagged <span class="spell-tag visor">VISOR</span>).</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spellcasting -->
+        <div class="spellcasting-section">
+            <h2 class="section-title">Spellcasting (½ Caster Homebrew)</h2>
+
+            <div class="spellcasting-header">
+                <div class="spell-stat">
+                    <div class="spell-stat-label">Spell Save DC</div>
+                    <div class="spell-stat-value">15</div>
+                </div>
+                <div class="spell-stat" onclick="showDiceRoll('Spell Attack', 7)">
+                    <div class="spell-stat-label">Spell Attack</div>
+                    <div class="spell-stat-value">+7</div>
+                </div>
+                <div class="spell-stat">
+                    <div class="spell-stat-label">Ability</div>
+                    <div class="spell-stat-value">INT</div>
+                </div>
+                <div class="spell-stat">
+                    <div class="spell-stat-label">Prepared</div>
+                    <div class="spell-stat-value">8 + Visor</div>
+                </div>
+            </div>
+
+            <!-- Spell Slots -->
+            <div class="slots-section">
+                <div class="slot-box">
+                    <div class="slot-label">1st Level</div>
+                    <div class="slot-checkboxes">
+                        <input type="checkbox" class="slot-checkbox">
+                        <input type="checkbox" class="slot-checkbox">
+                        <input type="checkbox" class="slot-checkbox">
+                        <input type="checkbox" class="slot-checkbox">
+                    </div>
+                </div>
+                <div class="slot-box">
+                    <div class="slot-label">2nd Level</div>
+                    <div class="slot-checkboxes">
+                        <input type="checkbox" class="slot-checkbox">
+                        <input type="checkbox" class="slot-checkbox">
+                        <input type="checkbox" class="slot-checkbox">
+                    </div>
+                </div>
+                <div class="slot-box">
+                    <div class="slot-label">3rd Level</div>
+                    <div class="slot-checkboxes">
+                        <input type="checkbox" class="slot-checkbox">
+                        <input type="checkbox" class="slot-checkbox">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cantrips -->
+            <div class="spell-level">
+                <div class="spell-level-header">Cantrips</div>
+                <div class="spell-level-content">
+                    <span class="spell-link" data-spell="message">Message</span>,
+                    <span class="spell-link" data-spell="minor-illusion">Minor Illusion</span>,
+                    <span class="spell-link" data-spell="prestidigitation">Prestidigitation</span>
+                </div>
+            </div>
+
+            <div class="spell-level">
+                <div class="spell-level-header">1st Level</div>
+                <div class="spell-level-content">
+                    <span class="spell-link" data-spell="comprehend-languages">Comprehend Languages</span>,
+                    <span class="spell-link" data-spell="disguise-self">Disguise Self</span>,
+                    <span class="spell-link" data-spell="silent-image">Silent Image</span><sup class="spell-c">C</sup>,
+                    <span class="spell-link" data-spell="true-strike">True Strike</span> <span class="spell-tag visor">VISOR</span>,
+                    <span class="spell-link" data-spell="hunters-mark">Hunter's Mark</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>,
+                    <span class="spell-link" data-spell="detect-evil-and-good">Detect Evil and Good</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>
+                </div>
+            </div>
+
+            <div class="spell-level">
+                <div class="spell-level-header">2nd Level</div>
+                <div class="spell-level-content">
+                    <span class="spell-link" data-spell="invisibility">Invisibility</span><sup class="spell-c">C</sup>,
+                    <span class="spell-link" data-spell="locate-object">Locate Object</span><sup class="spell-c">C</sup>,
+                    <span class="spell-link" data-spell="misty-step">Misty Step</span>,
+                    <span class="spell-link" data-spell="rope-trick">Rope Trick</span>,
+                    <span class="spell-link" data-spell="shining-smite">Shining Smite</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>,
+                    <span class="spell-link" data-spell="pass-without-trace">Pass without Trace</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>
+                </div>
+            </div>
+
+            <div class="spell-level">
+                <div class="spell-level-header">3rd Level</div>
+                <div class="spell-level-content">
+                    <span class="spell-link" data-spell="major-image">Major Image</span><sup class="spell-c">C</sup>,
+                    <span class="spell-link" data-spell="clairvoyance">Clairvoyance</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>,
+                    <span class="spell-link" data-spell="speak-with-dead">Speak with Dead</span> <span class="spell-tag visor">VISOR</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="quick-ref">
+            <h3>⌖ Action Economy</h3>
+            <div class="quick-ref-grid">
+                <div class="quick-ref-item">
+                    <div class="qr-name">Cunning Action (BA)</div>
+                    <div>Dash / Disengage / Hide</div>
+                </div>
+                <div class="quick-ref-item">
+                    <div class="qr-name">Steady Aim (BA)</div>
+                    <div>Adv on next attack<br><em>Speed = 0</em></div>
+                </div>
+                <div class="quick-ref-item">
+                    <div class="qr-name">Deductive Fighting (BA)</div>
+                    <div>INT(Inv) vs Deception<br>Mark target 1 min</div>
+                </div>
+                <div class="quick-ref-item">
+                    <div class="qr-name">Search / Study (BA)</div>
+                    <div>From Steady Eye</div>
+                </div>
+                <div class="quick-ref-item">
+                    <div class="qr-name">Uncanny Dodge (R)</div>
+                    <div>½ damage from one hit<br><em>vs marked: also OA</em></div>
+                </div>
+                <div class="quick-ref-item">
+                    <div class="qr-name">Reliable Talent</div>
+                    <div>d20 ≤ 9 → treat as 10<br><em>(prof skills/tools)</em></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sheet-footer">
+            D&amp;D 5e (2024) • Level 9 Rogue • Inquisitive • Half-Caster Homebrew
+        </div>
+    </div>
+
+    <!-- Dice Toast -->
+    <div class="dice-toast" id="diceToast">
+        <div class="dice-toast-skill" id="diceSkill"></div>
+        <div class="dice-toast-result" id="diceResult"></div>
+        <div class="dice-toast-breakdown" id="diceBreakdown"></div>
+        <div class="dice-toast-label" id="diceLabel"></div>
+    </div>
+
+    <!-- Spell Popup -->
+    <div class="spell-overlay" id="spellOverlay">
+        <div class="spell-popup">
+            <div class="spell-popup-header" id="spellHeader">
+                <h2 class="spell-popup-title" id="spellTitle"></h2>
+                <p class="spell-popup-subtitle" id="spellSubtitle"></p>
+                <button class="spell-popup-close" onclick="closeSpellPopup()">×</button>
+            </div>
+            <div class="spell-popup-body">
+                <div class="spell-meta" id="spellMeta"></div>
+                <div class="spell-description" id="spellDescription"></div>
+                <div class="spell-upcast" id="spellUpcast" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const spells = {
+            "message": { name:"Message", level:"Cantrip", school:"Transmutation", type:"cantrip",
+                castingTime:"Action", range:"120 feet", components:"V, S, M (a copper wire)", duration:"1 round",
+                description:`<p>You point toward a creature within range and whisper a message. The target (and only the target) hears it and can reply in a whisper that only you can hear. You can cast this spell through solid objects if you are familiar with the target. Magical Silence, 1 foot of stone, 1 inch of common metal, a thin sheet of lead, or 3 feet of wood blocks the spell.</p>` },
+            "minor-illusion": { name:"Minor Illusion", level:"Cantrip", school:"Illusion", type:"cantrip",
+                castingTime:"Action", range:"30 feet", components:"S, M (a bit of fleece)", duration:"1 minute",
+                description:`<p>You create a sound or an image of an object within range. The illusion ends if you cast it again or dismiss it as an Action.</p>
+                <p><strong>Sound.</strong> Volume from a whisper to a scream.</p>
+                <p><strong>Image.</strong> An object no larger than a 5-foot Cube. The image can't create sound, light, smell, or other sensory effects. Physical interaction reveals it to be an illusion.</p>
+                <p>A creature can take a Study action and succeed on an Investigation check (DC 15) to determine the illusion is fake.</p>` },
+            "prestidigitation": { name:"Prestidigitation", level:"Cantrip", school:"Transmutation", type:"cantrip",
+                castingTime:"Action", range:"10 feet", components:"V, S", duration:"Up to 1 hour",
+                description:`<p>This spell is a minor magical trick. You create one of the following effects within range: harmless sensory effect, light/snuff a candle, clean/soil an object, chill/warm/flavor material, color a mark, or create a nonmagical trinket that lasts until end of next turn.</p>` },
+            "comprehend-languages": { name:"Comprehend Languages", level:"1st", school:"Divination", type:"normal",
+                castingTime:"Action (Ritual)", range:"Self", components:"V, S, M (a pinch of soot and salt)", duration:"1 hour",
+                description:`<p>For the duration, you understand the literal meaning of any spoken language that you hear. You also understand any written language that you see, but you must be touching the surface on which the words are written. It takes about 1 minute to read one page of text.</p>
+                <p>This spell doesn't decode secret messages in a text or a glyph, such as an arcane sigil, that isn't part of a written language.</p>` },
+            "disguise-self": { name:"Disguise Self", level:"1st", school:"Illusion", type:"normal",
+                castingTime:"Action", range:"Self", components:"V, S", duration:"1 hour",
+                description:`<p>You make yourself—including clothing, armor, weapons, and belongings—look different until the spell ends. You can seem 1 foot shorter or taller and can appear thin, fat, or in between. You must adopt a form with the same basic limb arrangement.</p>
+                <p>The changes wrought by this spell don't hold up to physical inspection. A creature can take the Study action against your spell save DC to discern that you are disguised.</p>` },
+            "silent-image": { name:"Silent Image", level:"1st", school:"Illusion", type:"normal",
+                castingTime:"Action", range:"60 feet", components:"V, S, M (a bit of fleece)", duration:"Concentration, up to 10 minutes",
+                description:`<p>You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 15-foot Cube. The image appears at a spot within range and lasts for the duration. The image is purely visual; it isn't accompanied by sound, smell, or other sensory effects.</p>
+                <p>You can take a Magic action to cause the image to move to any spot within range. The image can be no larger than a 15-foot Cube.</p>
+                <p>Physical interaction with the image reveals it to be an illusion. A creature can take the Study action to discern it (DC = your Spell Save DC).</p>` },
+            "true-strike": { name:"True Strike", level:"Cantrip / Visor", school:"Divination", type:"visor",
+                castingTime:"Action", range:"Self", components:"S, M (a weapon worth 1+ CP)", duration:"Instantaneous",
+                description:`<p>Guided by a flash of magical insight, you make one attack with the weapon used in the spell's casting. The attack uses your Spellcasting ability for the attack and damage rolls instead of using Strength or Dexterity. If the attack deals damage, it can be Radiant damage or the weapon's normal damage type (your choice).</p>
+                <p>In addition, if the attack hits, it deals additional Radiant damage at higher levels (1d6 at lvl 5, 2d6 at lvl 11, 3d6 at lvl 17). At level 9: <strong>+1d6 Radiant on hit</strong>.</p>
+                <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`
+            },
+            "hunters-mark": { name:"Hunter's Mark", level:"1st", school:"Divination", type:"visor",
+                castingTime:"Bonus Action", range:"90 feet", components:"V", duration:"Concentration, up to 1 hour",
+                description:`<p>You magically channel your focus to hunt down prey. Until the spell ends, you deal an extra 1d6 damage to the target whenever you hit it with a weapon attack. Also, you have Advantage on any Wisdom (Perception) or Wisdom (Survival) check you make to find it.</p>
+                <p>If the target drops to 0 Hit Points before this spell ends, you can use a Bonus Action on a later turn to mark a new creature.</p>
+                <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`,
+                upcast:"Concentrate up to 8 hours (level 3-4) or 24 hours (level 5+)."
+            },
+            "detect-evil-and-good": { name:"Detect Evil and Good", level:"1st", school:"Divination", type:"visor",
+                castingTime:"Action", range:"Self", components:"V, S", duration:"Concentration, up to 10 minutes",
+                description:`<p>For the duration, you know if there is an Aberration, a Celestial, an Elemental, a Fey, a Fiend, or an Undead within 30 feet of yourself, as well as where the creature is located. Similarly, you know if there is a place or object within 30 feet of yourself that has been magically consecrated or desecrated.</p>
+                <p>The spell can penetrate most barriers, but it is blocked by 1 foot of stone, dirt, or wood; 1 inch of metal; or a thin sheet of lead.</p>
+                <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`
+            },
+            "invisibility": { name:"Invisibility", level:"2nd", school:"Illusion", type:"normal",
+                castingTime:"Action", range:"Touch", components:"V, S, M (an eyelash in gum arabic)", duration:"Concentration, up to 1 hour",
+                description:`<p>A creature you touch has the Invisible condition until the spell ends. The spell ends early immediately after the target makes an attack roll, deals damage, or casts a spell.</p>`,
+                upcast:"You can target one additional creature for each spell slot level above 2."
+            },
+            "locate-object": { name:"Locate Object", level:"2nd", school:"Divination", type:"normal",
+                castingTime:"Action", range:"Self", components:"V, S, M (a forked twig)", duration:"Concentration, up to 10 minutes",
+                description:`<p>Describe or name an object that is familiar to you. You sense the direction to the object's location, as long as that object is within 1,000 feet of you. If the object is in motion, you know the direction of its movement.</p>
+                <p>The spell can locate a specific object known to you, as long as you have seen it up close (within 30 feet) at least once. Alternatively, the spell can locate the nearest object of a particular kind.</p>
+                <p>This spell can't locate an object if any thickness of lead, even a thin sheet, blocks a direct path between you and the object.</p>`
+            },
+            "misty-step": { name:"Misty Step", level:"2nd", school:"Conjuration", type:"normal",
+                castingTime:"Bonus Action", range:"Self", components:"V", duration:"Instantaneous",
+                description:`<p>Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see.</p>`
+            },
+            "rope-trick": { name:"Rope Trick", level:"2nd", school:"Transmutation", type:"normal",
+                castingTime:"Action", range:"Touch", components:"V, S, M (powdered corn extract and a twisted loop of parchment)", duration:"1 hour",
+                description:`<p>You touch a length of rope up to 60 feet long. One end of the rope rises into the air until the entire rope hangs perpendicular to the ground. At the upper end of the rope, an Invisible entrance opens to an extradimensional space large enough to hold up to eight Medium or Small creatures, lasting until the spell ends.</p>
+                <p>You and any creatures you can see when you cast the spell can ascend the rope into the extradimensional space. You can pull the rope up after you, making it disappear from view. Attacks and spells can't cross through the entrance, but those inside can see out as if through a 3-by-5-foot window.</p>
+                <p>Anything inside the extradimensional space drops out when the spell ends.</p>`
+            },
+            "shining-smite": { name:"Shining Smite", level:"2nd", school:"Transmutation", type:"visor",
+                castingTime:"Bonus Action (after hitting with weapon)", range:"Self", components:"V", duration:"Concentration, up to 1 minute",
+                description:`<p>The next time you hit a creature with a melee weapon attack during this spell's duration, your weapon flares with bright light, and the attack deals an extra 2d6 Radiant damage to the target. Additionally, the target sheds bright light in a 5-foot radius and dim light for an additional 5 feet. The target can't become invisible for the duration.</p>
+                <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`,
+                upcast:"The damage increases by 1d6 for each spell slot level above 2."
+            },
+            "pass-without-trace": { name:"Pass without Trace", level:"2nd", school:"Abjuration", type:"visor",
+                castingTime:"Action", range:"Self", components:"V, S, M (ashes from burned mistletoe and a sprig of spruce)", duration:"Concentration, up to 1 hour",
+                description:`<p>A veil of shadows and silence radiates from you, masking you and your companions from detection. For the duration, each creature you choose within 30 feet of you (including you) has a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means. A creature that receives this bonus leaves behind no tracks or other traces of its passage.</p>
+                <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`
+            },
+            "major-image": { name:"Major Image", level:"3rd", school:"Illusion", type:"normal",
+                castingTime:"Action", range:"120 feet", components:"V, S, M (a bit of fleece)", duration:"Concentration, up to 10 minutes",
+                description:`<p>You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 20-foot Cube. The image appears at a spot that you can see within range and lasts for the duration. It seems real, including sounds, smells, and temperature appropriate to the thing depicted, but it can't deal damage or cause conditions.</p>
+                <p>If you are within range of the illusion, you can take a Magic action to cause the image to move to any other spot within range. As the image changes location, you can alter its appearance so that its movements appear natural for the image. For example, if you create an image of a creature and move it, you can alter the image so that it appears to be walking. Similarly, you can cause the illusion to make different sounds at different times, even making it carry on a conversation, for example.</p>
+                <p>Physical interaction with the image reveals it to be an illusion, for things can pass through it. A creature that takes a Study action to examine the image can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC. If a creature discerns the illusion for what it is, the creature can see through the image, and its other sensory qualities become faint to the creature.</p>`,
+                upcast:"The spell lasts until dispelled, without requiring Concentration, if cast with a level 4+ spell slot."
+            },
+            "clairvoyance": { name:"Clairvoyance", level:"3rd", school:"Divination", type:"visor",
+                castingTime:"10 minutes", range:"1 mile", components:"V, S, M (a focus worth 100+ GP, either a jeweled horn or a glass eye)",
+                duration:"Concentration, up to 10 minutes",
+                description:`<p>You create an Invisible sensor within range in a location familiar to you, or in an obvious location that is unfamiliar to you (such as behind a door, around a corner, or in a grove of trees). The sensor remains for the duration and can't be attacked.</p>
+                <p>When you cast the spell, you choose seeing or hearing. You can use the chosen sense through the sensor as if you were in its space. As an action, you can switch between seeing and hearing.</p>
+                <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`
+            },
+            "speak-with-dead": { name:"Speak with Dead", level:"3rd", school:"Necromancy", type:"visor",
+                castingTime:"Action", range:"10 feet", components:"V, S, M (burning incense)", duration:"10 minutes",
+                description:`<p>You grant the semblance of life and intelligence to a corpse of your choice within range, allowing it to answer questions you pose. The corpse must still have a mouth and can't be Undead. The spell fails if the corpse was the target of this spell within the last 10 days.</p>
+                <p>Until the spell ends, you can ask the corpse up to five questions. The corpse knows only what it knew in life, including the languages it knew. Answers are usually brief, cryptic, or repetitive, and the corpse is under no compulsion to offer a truthful answer if you are hostile to it or it recognizes you as an enemy. This spell doesn't return the creature's soul to its body, only its animating spirit. Thus, the corpse can't learn new information, doesn't comprehend anything that has happened since it died, and can't speculate about future events.</p>
+                <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`
+            }
+        };
+
+        function openSpellPopup(spellId) {
+            const spell = spells[spellId]; if(!spell) return;
+            document.getElementById('spellHeader').className = 'spell-popup-header ' + (spell.type || '');
+            document.getElementById('spellTitle').textContent = spell.name;
+            document.getElementById('spellSubtitle').textContent = spell.level === 'Cantrip' ? spell.school+' Cantrip' : 'Level '+spell.level+' '+spell.school;
+            document.getElementById('spellMeta').innerHTML = `
+                <div class="spell-meta-item"><span class="spell-meta-label">Casting Time:</span> ${spell.castingTime}</div>
+                <div class="spell-meta-item"><span class="spell-meta-label">Range:</span> ${spell.range}</div>
+                <div class="spell-meta-item"><span class="spell-meta-label">Components:</span> ${spell.components}</div>
+                <div class="spell-meta-item"><span class="spell-meta-label">Duration:</span> ${spell.duration}</div>`;
+            document.getElementById('spellDescription').innerHTML = spell.description;
+            const upcast = document.getElementById('spellUpcast');
+            if(spell.upcast) { upcast.innerHTML = '<strong>Higher-Level Slot:</strong> '+spell.upcast; upcast.style.display='block'; }
+            else { upcast.style.display='none'; }
+            document.getElementById('spellOverlay').classList.add('active');
+        }
+        function closeSpellPopup() { document.getElementById('spellOverlay').classList.remove('active'); }
+        document.getElementById('spellOverlay').addEventListener('click', function(e) { if(e.target===this) closeSpellPopup(); });
+        document.addEventListener('keydown', function(e) { if(e.key==='Escape') closeSpellPopup(); });
+        document.querySelectorAll('.spell-link').forEach(link => link.addEventListener('click', function() { openSpellPopup(this.dataset.spell); }));
+
+        // Dice rolling
+        let diceToastTimeout = null;
+        function rollD20() { return Math.floor(Math.random()*20)+1; }
+        function hideDiceToast() { document.getElementById('diceToast').classList.remove('show'); if(diceToastTimeout){clearTimeout(diceToastTimeout);diceToastTimeout=null;} }
+
+        function showDiceRoll(skillName, bonus, reliableTalent) {
+            const original = rollD20();
+            let effective = original;
+            let reliableApplied = false;
+            if (reliableTalent && original < 10) { effective = 10; reliableApplied = true; }
+            const total = effective + bonus;
+            const toast=document.getElementById('diceToast');
+            document.getElementById('diceSkill').textContent=skillName;
+            document.getElementById('diceResult').textContent=total;
+            const sign = bonus>=0?'+':'';
+            if (reliableApplied) {
+                document.getElementById('diceBreakdown').textContent = '🎲 '+original+' → 10 (RT) '+sign+bonus;
+            } else {
+                document.getElementById('diceBreakdown').textContent = '🎲 '+original+' '+sign+bonus;
+            }
+            toast.classList.remove('crit','fail');
+            const label=document.getElementById('diceLabel');
+            if(original===20){toast.classList.add('crit');label.textContent='¡Natural 20!';}
+            else if(original===1 && !reliableApplied){toast.classList.add('fail');label.textContent='Natural 1...';}
+            else if(reliableApplied){label.textContent='Reliable Talent';}
+            else{label.textContent='';}
+            if(diceToastTimeout) clearTimeout(diceToastTimeout);
+            toast.classList.add('show');
+            diceToastTimeout=setTimeout(()=>toast.classList.remove('show'),2000);
+        }
+
+        function rollAttack(name, hitBonus, diceStr, dmgBonus, dmgType) {
+            const roll=rollD20(), total=roll+hitBonus;
+            const toast=document.getElementById('diceToast');
+            document.getElementById('diceSkill').textContent=name;
+            document.getElementById('diceResult').textContent=total;
+            toast.classList.remove('crit','fail');
+            const label=document.getElementById('diceLabel');
+            // Visor crit on 19-20
+            if(roll>=19){toast.classList.add('crit');label.textContent='¡CRITICAL HIT! (19-20)';
+                document.getElementById('diceBreakdown').textContent='🎲 '+roll+' +'+hitBonus+' | Dmg: 2×'+diceStr+' +'+dmgBonus+' '+dmgType+' (+SA on crit ×2)';
+            } else if(roll===1){toast.classList.add('fail');label.textContent='Critical Miss...';
+                document.getElementById('diceBreakdown').textContent='🎲 '+roll+' +'+hitBonus;
+            } else {label.textContent='';
+                document.getElementById('diceBreakdown').textContent='🎲 '+roll+' +'+hitBonus+' | Dmg: '+diceStr+' +'+dmgBonus+' '+dmgType+' (+5d6 SA)';
+            }
+            if(diceToastTimeout) clearTimeout(diceToastTimeout);
+            toast.classList.add('show');
+            diceToastTimeout=setTimeout(()=>toast.classList.remove('show'),2500);
+        }
+
+        document.addEventListener('click', function(e) {
+            const toast=document.getElementById('diceToast');
+            if(toast.classList.contains('show') && !e.target.closest('.skill-item') && !e.target.closest('.ability-save') && !e.target.closest('.initiative-roll') && !e.target.closest('.spell-stat') && !e.target.closest('.attack-item')) hideDiceToast();
+        });
+        document.querySelectorAll('.skill-item').forEach(item => item.addEventListener('click', function() {
+            const reliable = this.classList.contains('prof');
+            showDiceRoll(this.dataset.skill, parseInt(this.dataset.bonus), reliable);
+        }));
+        document.querySelectorAll('.ability-save').forEach(item => item.addEventListener('click', function(e) { e.stopPropagation(); showDiceRoll(this.dataset.save+' Save', parseInt(this.dataset.bonus)); }));
+        document.querySelector('.initiative-roll').addEventListener('click', function(e) { e.stopPropagation(); showDiceRoll('Initiative', parseInt(this.dataset.bonus)); });
+
+        // Tracker charges
+        function toggleCharge(prefix, n) { document.getElementById(prefix+n).classList.toggle('used'); saveState(); }
+
+        // Rest functions & state
+        const STORAGE_KEY = 'inquisitor-character-state';
+        function saveState() {
+            const state = { slots:[], fluster:[], guarded:[] };
+            document.querySelectorAll('.slot-checkbox').forEach((cb,i) => state.slots[i] = cb.checked);
+            for(let i=1;i<=4;i++) state.fluster.push(document.getElementById('flusterCharge'+i).classList.contains('used'));
+            state.guarded.push(document.getElementById('guardedCharge1').classList.contains('used'));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY); if(!saved) return;
+            try {
+                const state = JSON.parse(saved);
+                const slots = document.querySelectorAll('.slot-checkbox');
+                if(state.slots) state.slots.forEach((c,i) => { if(slots[i]) slots[i].checked = c; });
+                if(state.fluster) state.fluster.forEach((u,i) => { if(u) document.getElementById('flusterCharge'+(i+1)).classList.add('used'); });
+                if(state.guarded && state.guarded[0]) document.getElementById('guardedCharge1').classList.add('used');
+            } catch(e) { console.error(e); }
+        }
+        function shortRest() {
+            document.getElementById('guardedCharge1').classList.remove('used');
+            saveState();
+            showRestToast('Short Rest', 'Guarded Mind recovered');
+        }
+        function longRest() {
+            document.querySelectorAll('.slot-checkbox').forEach(cb => cb.checked = false);
+            for(let i=1;i<=4;i++) document.getElementById('flusterCharge'+i).classList.remove('used');
+            document.getElementById('guardedCharge1').classList.remove('used');
+            saveState();
+            showRestToast('Long Rest', 'All resources restored');
+        }
+        function showRestToast(title, message) {
+            const toast=document.getElementById('diceToast');
+            document.getElementById('diceSkill').textContent=title;
+            document.getElementById('diceResult').textContent='✓';
+            document.getElementById('diceBreakdown').textContent=message;
+            document.getElementById('diceLabel').textContent='';
+            toast.classList.remove('crit','fail'); toast.classList.add('show');
+            if(diceToastTimeout) clearTimeout(diceToastTimeout);
+            diceToastTimeout=setTimeout(()=>toast.classList.remove('show'),2000);
+        }
+        document.querySelectorAll('.slot-checkbox').forEach(cb => cb.addEventListener('change', saveState));
+        loadState();
+    </script>
+</body>
+</html>
