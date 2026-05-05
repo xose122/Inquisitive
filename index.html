@@ -49,6 +49,11 @@
         .spell-description { font-size:0.95rem; line-height:1.6; }
         .spell-description p { margin-bottom:10px; }
         .spell-description p:last-child { margin-bottom:0; }
+        .spell-description ul, .spell-description ol { margin: 8px 0 10px 20px; padding-left: 8px; }
+        .spell-description li { margin-bottom: 4px; list-style: disc; }
+        .spell-description table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.9rem; }
+        .spell-description th, .spell-description td { border: 1px solid #c9a227; padding: 4px 10px; text-align: center; }
+        .spell-description th { background: rgba(201,162,39,0.2); font-weight: 600; }
         .spell-upcast { margin-top:15px; padding-top:15px; border-top:1px dashed var(--brass); font-size:0.9rem; color:var(--ink-light); }
         .spell-upcast strong { color:var(--steel); }
         .spell-link { cursor:pointer; border-bottom:1px dotted var(--ink-light); transition:all 0.2s; }
@@ -164,6 +169,8 @@
         .spell-level-content { padding:10px 12px; font-size:0.9rem; line-height:1.6; }
         .spell-tag { font-size:0.7rem; padding:1px 6px; border-radius:3px; margin-left:2px; font-weight:600; }
         .spell-tag.visor { background:var(--brass); color:#fff; }
+        .spell-tag.urzha { background: #7a1a1a; color: #fff; }
+        .spell-popup-header.urzha { background: linear-gradient(135deg, #7a1a1a 0%, #9b2c2c 100%); }
         .spell-c { font-family:'Cinzel',serif; font-size:0.65rem; font-weight:700; color:var(--gold-dark); vertical-align:super; margin-left:1px; }
 
         /* Tracker boxes */
@@ -544,12 +551,13 @@
             <div class="spell-level">
                 <div class="spell-level-header">2nd Level</div>
                 <div class="spell-level-content">
+                    <span class="spell-link" data-spell="shining-smite">Shining Smite</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>,
+                    <span class="spell-link" data-spell="pass-without-trace">Pass without Trace</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>,
+                    <span class="spell-link" data-spell="simple-territory">Simple Territory</span> <span class="spell-tag urzha">URZ</span>,
                     <span class="spell-link" data-spell="invisibility">Invisibility</span><sup class="spell-c">C</sup>,
                     <span class="spell-link" data-spell="locate-object">Locate Object</span><sup class="spell-c">C</sup>,
                     <span class="spell-link" data-spell="misty-step">Misty Step</span>,
-                    <span class="spell-link" data-spell="rope-trick">Rope Trick</span>,
-                    <span class="spell-link" data-spell="shining-smite">Shining Smite</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>,
-                    <span class="spell-link" data-spell="pass-without-trace">Pass without Trace</span><sup class="spell-c">C</sup> <span class="spell-tag visor">VISOR</span>
+                    <span class="spell-link" data-spell="rope-trick">Rope Trick</span>
                 </div>
             </div>
 
@@ -720,6 +728,18 @@
                 description:`<p>You grant the semblance of life and intelligence to a corpse of your choice within range, allowing it to answer questions you pose. The corpse must still have a mouth and can't be Undead. The spell fails if the corpse was the target of this spell within the last 10 days.</p>
                 <p>Until the spell ends, you can ask the corpse up to five questions. The corpse knows only what it knew in life, including the languages it knew. Answers are usually brief, cryptic, or repetitive, and the corpse is under no compulsion to offer a truthful answer if you are hostile to it or it recognizes you as an enemy. This spell doesn't return the creature's soul to its body, only its animating spirit. Thus, the corpse can't learn new information, doesn't comprehend anything that has happened since it died, and can't speculate about future events.</p>
                 <p style="color: var(--brass-dark);"><strong>Precision Visor (always prepared).</strong></p>`
+            },
+            // Urzha
+            "simple-territory": { name:"Simple Territory", level:"2nd", school:"Abjuration", type:"urzha",
+                castingTime:"1 Action", range:"Self (60-foot-radius Sphere)", components:"V, S", duration:"Concentration, up to 1 minute",
+                description:`<p>You manifest an empty, formless field of will into the surrounding space. The Simple Territory has no shape of its own — it is a neutral expansion designed to nullify the central rule of Lethal Territories of the Self.</p>
+                <p><strong>Casting the Territory.</strong> When you take the Magic action to initiate this spell, you become the <em>primary caster</em> and choose any number of willing creatures within the Territory's area as <em>secondary casters</em>. Secondary casters may optionally share Concentration with you, if shared, the spell's effects remain active as long as at least one caster maintains Concentration. A caster whose Concentration is broken cannot resume sharing Concentration on this spell.</p>
+                <p><strong>Maintaining the Territory.</strong> If an enemy <em>Territory of the Self</em> is active in the same area, the upkeep cost is the enemy Territory's refinement divided by 10. When you cast this spell and at the start of each of your turns, you and any secondary casters must contribute Territory Points equal to or exceeding the upkeep cost by expending spell slots (no action required), converted using the Territory Points table. If the contributed points do not meet the upkeep cost in a given round, the Simple Territory ends.</p>
+                <p><strong>Effects.</strong> While the Simple Territory is active:</p>
+                <ul><li>No creature inside the area can teleport, plane shift, or otherwise leave the Territory by magical means.</li>
+                <li>If the Territory is active inside an enemy <em>Lethal Territory of the Self</em>, the enemy Territory's <em>sure-hit effect</em> is suppressed.</li></ul>
+                <p><strong>Breaking the Territory.</strong> A Simple Territory cannot be Dispelled. It ends only when all sharers lose or release Concentration, when the upkeep cost fails to be met in a given round, or when its duration expires.</p>
+                <table><thead><tr><th>Spell Level</th><th>Territory Points</th></tr></thead><tbody><tr><td>1st</td><td>2</td></tr><tr><td>2nd</td><td>3</td></tr><tr><td>3rd</td><td>5</td></tr><tr><td>4th</td><td>6</td></tr><tr><td>5th</td><td>7</td></tr><tr><td>6th</td><td>9</td></tr><tr><td>7th</td><td>10</td></tr><tr><td>8th</td><td>11</td></tr><tr><td>9th</td><td>13</td></tr></tbody></table>`
             }
         };
 
